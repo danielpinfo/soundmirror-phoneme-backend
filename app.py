@@ -1,90 +1,56 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Query
-from fastapi.middleware.cors import CORSMiddleware
-import torch
-import torchaudio
-from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
-import io
-import os
-import uvicorn
+name: Deploy to Railway
 
-app = FastAPI(title="SoundMirror Phoneme Backend")
+on:
+  workflow_dispatch:
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: English
+            code: en
+            model: facebook/wav2vec2-large-xlsr-53-english
+          - language: Spanish
+            code: es
+            model: facebook/wav2vec2-large-xlsr-53-spanish
+          - language: French
+            code: fr
+            model: facebook/wav2vec2-large-xlsr-53-french
+          - language: German
+            code: de
+            model: facebook/wav2vec2-large-xlsr-53-german
+          - language: Italian
+            code: it
+            model: facebook/wav2vec2-large-xlsr-53-italian
+          - language: Portuguese
+            code: pt
+            model: facebook/wav2vec2-large-xlsr-53-portuguese
+          - language: Japanese
+            code: ja
+            model: jonatasgrosman/wav2vec2-large-xlsr-53-japanese
+          - language: Chinese
+            code: zh
+            model: jonatasgrosman/wav2vec2-large-xlsr-53-chinese-zh-cn
+          - language: Hindi
+            code: hi
+            model: jonatasgrosman/wav2vec2-large-xlsr-53-hindi
+          - language: Arabic
+            code: ar
+            model: jonatasgrosman/wav2vec2-large-xlsr-53-arabic
 
-MODEL_ID = os.getenv("MODEL_ID", "facebook/wav2vec2-large-xlsr-53-english")
-LANGUAGE = os.getenv("LANGUAGE", "en")
+    steps:
+      - uses: actions/checkout@v3
 
-print(f"Loading model: {MODEL_ID}")
-processor = Wav2Vec2Processor.from_pretrained(MODEL_ID)
-model = Wav2Vec2ForCTC.from_pretrained(MODEL_ID)
-print("Model loaded successfully!")
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
 
-def load_audio(file_bytes):
-    audio, sr = torchaudio.load(io.BytesIO(file_bytes))
-    if sr != 16000:
-        resampler = torchaudio.transforms.Resample(sr, 16000)
-        audio = resampler(audio)
-    if audio.shape[0] > 1:
-        audio = torch.mean(audio, dim=0, keepdim=True)
-    return audio.squeeze()
-
-@app.get("/")
-async def root():
-    return {
-        "status": "ok",
-        "model": MODEL_ID,
-        "language": LANGUAGE,
-        "service": "SoundMirror Phoneme Backend"
-    }
-
-@app.post("/phonemes")
-async def analyze_phonemes(
-    file: UploadFile = File(...),
-    lang: str = Query(LANGUAGE)
-):
-    try:
-        audio_bytes = await file.read()
-        waveform = load_audio(audio_bytes)
-        
-        inputs = processor(waveform, sampling_rate=16000, return_tensors="pt", padding=True)
-        
-        with torch.no_grad():
-            logits = model(inputs.input_values).logits
-        
-        predicted_ids = torch.argmax(logits, dim=-1)
-        transcription = processor.batch_decode(predicted_ids)[0]
-        
-        tokens = transcription.strip().split()
-        
-        return {
-            "lang": lang,
-            "model": MODEL_ID,
-            "phonemes": transcription,
-            "phoneme_list": tokens,
-            "tokens": tokens,
-            "clean_tokens": tokens,
-            "primary": tokens[0] if tokens else "",
-            "raw_transcription": transcription,
-            "ipa_units": tokens,
-            "raw_text": transcription
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/expected_ipa")
-async def get_expected_ipa(text: str = Query(...), lang: str = Query(LANGUAGE)):
-    return {
-        "text": text,
-        "lang": lang,
-        "ipa": text.lower()
-    }
-
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+      - name: Deploy ${{ matrix.language }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+        run: |
+          railway up --service soundmirror-${{ matrix.code }} --detach
+          railway variables --service soundmirror-${{ matrix.code }} set MODEL_ID="${{ matrix.model }}" LANGUAGE=${{ matrix.code }}
