@@ -1,0 +1,56 @@
+name: Deploy to Railway
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - language: English
+            code: en
+            model: facebook/wav2vec2-large-xlsr-53-english
+          - language: Spanish
+            code: es
+            model: facebook/wav2vec2-large-xlsr-53-spanish
+          - language: French
+            code: fr
+            model: facebook/wav2vec2-large-xlsr-53-french
+          - language: German
+            code: de
+            model: facebook/wav2vec2-large-xlsr-53-german
+          - language: Italian
+            code: it
+            model: facebook/wav2vec2-large-xlsr-53-italian
+          - language: Portuguese
+            code: pt
+            model: facebook/wav2vec2-large-xlsr-53-portuguese
+          - language: Japanese
+            code: ja
+            model: jonatasgrosman/wav2vec2-large-xlsr-53-japanese
+          - language: Chinese
+            code: zh
+            model: jonatasgrosman/wav2vec2-large-xlsr-53-chinese-zh-cn
+          - language: Hindi
+            code: hi
+            model: jonatasgrosman/wav2vec2-large-xlsr-53-hindi
+          - language: Arabic
+            code: ar
+            model: jonatasgrosman/wav2vec2-large-xlsr-53-arabic
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy ${{ matrix.language }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway up --service soundmirror-${{ matrix.code }} --detach || railway up --detach
+          railway variables set MODEL_ID="${{ matrix.model }}" LANGUAGE=${{ matrix.code }} --service soundmirror-${{ matrix.code }}
