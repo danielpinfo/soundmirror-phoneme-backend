@@ -1,12 +1,18 @@
-cd soundmirror-phoneme-backend
-git pull origin main
-cat > .github/workflows/deploy.yml << 'EOF'
 name: Deploy to Railway
+
 on:
   workflow_dispatch:
+  push:
+    branches: [ main ]
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # REQUIRED: add RAILWAY_TOKEN as a repository secret (use a project token)
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      # OPTIONAL: set RAILWAY_PROJECT_ID in secrets if you want to pass --project-id explicitly
+      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
     strategy:
       fail-fast: false
       matrix:
@@ -41,17 +47,20 @@ jobs:
           - language: Arabic
             code: ar
             model: jonatasgrosman/wav2vec2-large-xlsr-53-arabic
+
     steps:
       - uses: actions/checkout@v3
+
       - name: Install Railway CLI
         run: npm install -g @railway/cli
+
       - name: Deploy ${{ matrix.language }}
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          railway up --service soundmirror-${{ matrix.code }} --detach --project-id 185b3721-1d16-4d52-b862-30c0bc529581
-          railway variables set MODEL_ID="${{ matrix.model }}" LANGUAGE=${{ matrix.code }} --service soundmirror-${{ matrix.code }} --project-id 185b3721-1d16-4d52-b862-30c0bc529581
-EOF
-git add .github/workflows/deploy.yml
-git commit -m "Fix deploy workflow"
-git push origin main
+          # If you prefer to pass a project id, set RAILWAY_PROJECT_ID secret.
+          if [ -n "$RAILWAY_PROJECT_ID" ]; then
+            railway up --service "soundmirror-${{ matrix.code }}" --detach --project-id "$RAILWAY_PROJECT_ID"
+            railway variables set MODEL_ID="${{ matrix.model }}" LANGUAGE="${{ matrix.code }}" --service "soundmirror-${{ matrix.code }}" --project-id "$RAILWAY_PROJECT_ID"
+          else
+            railway up --service "soundmirror-${{ matrix.code }}" --detach || railway up --detach
+            railway variables set MODEL_ID="${{ matrix.model }}" LANGUAGE="${{ matrix.code }}" --service "soundmirror-${{ matrix.code }}"
+          fi
