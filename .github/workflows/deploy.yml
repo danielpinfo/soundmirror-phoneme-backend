@@ -1,8 +1,9 @@
+cd soundmirror-phoneme-backend
+git pull origin main
+cat > .github/workflows/deploy.yml << 'EOF'
 name: Deploy to Railway
-
 on:
   workflow_dispatch:
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -40,17 +41,17 @@ jobs:
           - language: Arabic
             code: ar
             model: jonatasgrosman/wav2vec2-large-xlsr-53-arabic
-
     steps:
       - uses: actions/checkout@v3
-
       - name: Install Railway CLI
         run: npm install -g @railway/cli
-
       - name: Deploy ${{ matrix.language }}
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway up --service soundmirror-${{ matrix.code }} --detach
-          railway variables --service soundmirror-${{ matrix.code }} set MODEL_ID="${{ matrix.model }}" LANGUAGE=${{ matrix.code }}
+          railway up --service soundmirror-${{ matrix.code }} --detach --project-id 185b3721-1d16-4d52-b862-30c0bc529581
+          railway variables set MODEL_ID="${{ matrix.model }}" LANGUAGE=${{ matrix.code }} --service soundmirror-${{ matrix.code }} --project-id 185b3721-1d16-4d52-b862-30c0bc529581
+EOF
+git add .github/workflows/deploy.yml
+git commit -m "Fix deploy workflow"
+git push origin main
