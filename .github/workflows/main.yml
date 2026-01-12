@@ -1,0 +1,39 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        language:
+          - { code: 'en', name: 'English', model: 'facebook/wav2vec2-large-xlsr-53-english' }
+          - { code: 'es', name: 'Spanish', model: 'facebook/wav2vec2-large-xlsr-53-spanish' }
+          - { code: 'fr', name: 'French', model: 'facebook/wav2vec2-large-xlsr-53-french' }
+          - { code: 'de', name: 'German', model: 'facebook/wav2vec2-large-xlsr-53-german' }
+          - { code: 'it', name: 'Italian', model: 'facebook/wav2vec2-large-xlsr-53-italian' }
+          - { code: 'pt', name: 'Portuguese', model: 'facebook/wav2vec2-large-xlsr-53-portuguese' }
+          - { code: 'ja', name: 'Japanese', model: 'jonatasgrosman/wav2vec2-large-xlsr-53-japanese' }
+          - { code: 'zh', name: 'Chinese', model: 'jonatasgrosman/wav2vec2-large-xlsr-53-chinese-zh-cn' }
+          - { code: 'hi', name: 'Hindi', model: 'jonatasgrosman/wav2vec2-large-xlsr-53-hindi' }
+          - { code: 'ar', name: 'Arabic', model: 'jonatasgrosman/wav2vec2-large-xlsr-53-arabic' }
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      
+      - name: Deploy ${{ matrix.language.name }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway up --service soundmirror-${{ matrix.language.code }} \
+            --environment production \
+            -d MODEL_ID=${{ matrix.language.model }} \
+            -d LANGUAGE=${{ matrix.language.code }}
