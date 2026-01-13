@@ -16,14 +16,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Lazy load model to avoid Railway startup timeout
+processor = None
+model = None
 
-MODEL_ID = os.getenv("MODEL_ID", "facebook/wav2vec2-large-xlsr-53-english")
-LANGUAGE = os.getenv("LANGUAGE", "en")
-
-print(f"Loading model: {MODEL_ID}")
-processor = Wav2Vec2Processor.from_pretrained(MODEL_ID)
-model = Wav2Vec2ForCTC.from_pretrained(MODEL_ID)
-print("Model loaded successfully!")
+def load_model():
+    global processor, model
+    if processor is None or model is None:
+        print(f"Loading model: {MODEL_ID}")
+        processor = Wav2Vec2Processor.from_pretrained(MODEL_ID)
+        model = Wav2Vec2ForCTC.from_pretrained(MODEL_ID)
+        print("Model loaded successfully!")
 
 def load_audio(file_bytes):
     audio, sr = torchaudio.load(io.BytesIO(file_bytes))
