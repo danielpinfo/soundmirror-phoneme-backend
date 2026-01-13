@@ -10,44 +10,25 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - language: English
-            code: en
-            model: facebook/wav2vec2-large-xlsr-53-english
-          - language: Spanish
-            code: es
-            model: facebook/wav2vec2-large-xlsr-53-spanish
-          - language: French
-            code: fr
-            model: facebook/wav2vec2-large-xlsr-53-french
-          - language: German
-            code: de
-            model: facebook/wav2vec2-large-xlsr-53-german
-          - language: Italian
-            code: it
-            model: facebook/wav2vec2-large-xlsr-53-italian
-          - language: Portuguese
-            code: pt
-            model: facebook/wav2vec2-large-xlsr-53-portuguese
-          - language: Japanese
-            code: ja
-            model: jonatasgrosman/wav2vec2-large-xlsr-53-japanese
-          - language: Chinese
-            code: zh
-            model: jonatasgrosman/wav2vec2-large-xlsr-53-chinese-zh-cn
-          - language: Hindi
-            code: hi
-            model: jonatasgrosman/wav2vec2-large-xlsr-53-hindi
-          - language: Arabic
-            code: ar
-            model: jonatasgrosman/wav2vec2-large-xlsr-53-arabic
+          - {code: en, model: facebook/wav2vec2-large-xlsr-53-english}
+          - {code: es, model: facebook/wav2vec2-large-xlsr-53-spanish}
+          - {code: fr, model: facebook/wav2vec2-large-xlsr-53-french}
+          - {code: de, model: facebook/wav2vec2-large-xlsr-53-german}
+          - {code: it, model: facebook/wav2vec2-large-xlsr-53-italian}
+          - {code: pt, model: facebook/wav2vec2-large-xlsr-53-portuguese}
+          - {code: ja, model: jonatasgrosman/wav2vec2-large-xlsr-53-japanese}
+          - {code: zh, model: jonatasgrosman/wav2vec2-large-xlsr-53-chinese-zh-cn}
+          - {code: hi, model: jonatasgrosman/wav2vec2-large-xlsr-53-hindi}
+          - {code: ar, model: jonatasgrosman/wav2vec2-large-xlsr-53-arabic}
     steps:
       - uses: actions/checkout@v3
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-      - name: Deploy ${{ matrix.language }}
+      - run: npm i -g @railway/cli
+      - run: railway up
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          railway up --service soundmirror-${{ matrix.code }} --project 185b3721-1d16-4d52-b862-30c0bc529581 --detach || railway up --service soundmirror-${{ matrix.code }} --project 185b3721-1d16-4d52-b862-30c0bc529581
-          railway variables set MODEL_ID="${{ matrix.model }}" LANGUAGE=${{ matrix.code }} --service soundmirror-${{ matrix.code }} --project 185b3721-1d16-4d52-b862-30c0bc529581
+      - run: |
+          railway variables set MODEL_ID="${{ matrix.model }}" LANGUAGE=${{ matrix.code }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 EOF
+git add . && git commit -m "simplify" && git push
