@@ -16,6 +16,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+MODEL_ID = os.getenv("MODEL_ID", "facebook/wav2vec2-large-xlsr-53-english")
+LANGUAGE = os.getenv("LANGUAGE", "en")
+
 # Lazy load model to avoid Railway startup timeout
 processor = None
 model = None
@@ -43,8 +47,13 @@ async def root():
         "status": "ok",
         "model": MODEL_ID,
         "language": LANGUAGE,
+        "model_loaded": processor is not None and model is not None,
         "service": "SoundMirror Phoneme Backend"
     }
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 @app.post("/phonemes")
 async def analyze_phonemes(
@@ -52,6 +61,8 @@ async def analyze_phonemes(
     lang: str = Query(LANGUAGE)
 ):
     try:
+        load_model()  # Lazy load on first request
+        
         audio_bytes = await file.read()
         waveform = load_audio(audio_bytes)
         
