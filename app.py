@@ -20,7 +20,6 @@ app.add_middleware(
 MODEL_ID = os.getenv("MODEL_ID", "facebook/wav2vec2-large-xlsr-53-english")
 LANGUAGE = os.getenv("LANGUAGE", "en")
 
-# Lazy load model to avoid Railway startup timeout
 processor = None
 model = None
 
@@ -61,7 +60,7 @@ async def analyze_phonemes(
     lang: str = Query(LANGUAGE)
 ):
     try:
-        load_model()  # Lazy load on first request
+        load_model()
         
         audio_bytes = await file.read()
         waveform = load_audio(audio_bytes)
